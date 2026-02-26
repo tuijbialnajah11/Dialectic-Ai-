@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIALECTIC</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:        #0c0c0e;
+  --bg1:       #101013;
+  --bg2:       #16161b;
+  --bg3:       #1c1c22;
+  --border:    #272730;
+  --border2:   #32323e;
+  --text:      #e4e4f0;
+  --text2:     #8888a0;
+  --text3:     #50505e;
+  --alpha:     #4f8ef5;
+  --alpha-dim: rgba(79,142,245,0.1);
+  --alpha-brd: rgba(79,142,245,0.25);
+  --beta:      #e8923a;
+  --beta-dim:  rgba(232,146,58,0.1);
+  --beta-brd:  rgba(232,146,58,0.25);
+  --green:     #3dba72;
+  --green-dim: rgba(61,186,114,0.12);
+  --green-brd: rgba(61,186,114,0.3);
+  --red-dim:   rgba(240,80,80,0.1);
+  --red-brd:   rgba(240,80,80,0.3);
+}
+
+html, body {
+  height:100%; width:100%;
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+
+/* ────────────────────────────────────────────
+   LAYOUT  →  header(48px) | chats(3fr) | bottom(1fr)
+   ──────────────────────────────────────────── */
+.app {
+  height:100vh;
+  display:grid;
+  grid-template-rows: 48px 1fr 220px;
+}
+
+/* ── HEADER ────────────────────────────────── */
+.hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+
+.hdr-logo {
+  display:flex; align-items:center; gap:10px;
+  font-family:'DM Mono',monospace;
+  font-size:13px; letter-spacing:3px; text-transform:uppercase;
+  color:var(--text);
+}
+.logo-led {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--alpha);
+  box-shadow:0 0 8px var(--alpha);
+  transition:background .3s, box-shadow .3s;
+}
+.logo-led.running { background:var(--alpha); animation:led-pulse 1s ease infinite; }
+.logo-led.done    { background:var(--green); box-shadow:0 0 8px var(--green); animation:none; }
+@keyframes led-pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+.hdr-right { display:flex; align-items:center; gap:8px; }
+
+.pill {
+  font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1.5px;
+  text-transform:uppercase; padding:4px 10px; border-radius:20px;
+  border:1px solid var(--border); background:var(--bg2);
+  color:var(--text3); display:flex; align-items:center; gap:6px;
+}
+.pill.done { border-color:var(--green-brd); color:var(--green); }
+
+.hbtn {
+  font-family:'DM Mono',monospace; font-size:10px; letter-spacing:1px;
+  text-transform:uppercase; padding:5px 13px; border-radius:4px;
+  border:1px solid var(--border2); background:transparent; color:var(--text2);
+  cursor:pointer; transition:all .15s;
+}
+.hbtn:hover { background:var(--bg3); color:var(--text); }
+.hbtn.green { border-color:var(--green-brd); color:var(--green); display:none; }
+.hbtn.green:hover { background:var(--green-dim); }
+
+/* ── CHAT AREA ─────────────────────────────── */
+.chat-area {
+  display:grid; grid-template-columns:1fr 1fr;
+  overflow:hidden; background:var(--bg);
+}
+
+.chat-col { display:flex; flex-direction:column; overflow:hidden; }
+.chat-col.col-a { border-right:1px solid var(--border); }
+
+.col-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 16px; border-bottom:1px solid var(--border);
+  background:var(--bg1); flex-shrink:0;
+}
+
+.agent-tag { display:flex; align-items:center; gap:10px; }
+
+.ag-icon {
+  width:32px; height:32px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'DM Mono',monospace; font-size:13px; font-weight:500; flex-shrink:0;
+}
+.col-a .ag-icon { background:var(--alpha-dim); color:var(--alpha); border:1px solid var(--alpha-brd); }
+.col-b .ag-icon { background:var(--beta-dim);  color:var(--beta);  border:1px solid var(--beta-brd); }
+
+.ag-name { font-size:13px; font-weight:600; margin-bottom:1px; }
+.col-a .ag-name { color:var(--alpha); }
+.col-b .ag-name { color:var(--beta); }
+
+.ag-role {
+  font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1px;
+  text-transform:uppercase; color:var(--text3);
+}
+
+.turn-ct {
+  font-family:'DM Mono',monospace; font-size:10px; color:var(--text3);
+  padding:3px 9px; background:var(--bg2); border:1px solid var(--border); border-radius:3px;
+}
+
+/* messages scroll pane */
+.msgs {
+  flex:1; overflow-y:auto; padding:14px 14px 10px;
+  display:flex; flex-direction:column; gap:10px; scroll-behavior:smooth;
+}
+.msgs::-webkit-scrollbar { width:2px; }
+.msgs::-webkit-scrollbar-thumb { background:var(--border2); }
+
+/* empty placeholder */
+.empty {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:6px;
+  pointer-events:none;
+}
+.empty-g { font-size:26px; opacity:.1; margin-bottom:4px; }
+.empty-t { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text3); }
+
+/* message */
+.msg { animation:fadeUp .22s ease both; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+.msg-n { font-family:'DM Mono',monospace; font-size:9px; color:var(--text3); margin-bottom:4px; padding-left:2px; }
+.msg-b {
+  font-size:13px; line-height:1.68; padding:10px 13px;
+  border-radius:8px; border:1px solid; color:var(--text);
+}
+.col-a .msg-b { background:var(--alpha-dim); border-color:var(--alpha-brd); }
+.col-b .msg-b { background:var(--beta-dim);  border-color:var(--beta-brd); }
+
+/* typing dots */
+.typing-wrap {
+  display:flex; gap:5px; align-items:center;
+  padding:11px 14px; border-radius:8px; border:1px solid; width:fit-content;
+}
+.col-a .typing-wrap { background:var(--alpha-dim); border-color:var(--alpha-brd); }
+.col-b .typing-wrap { background:var(--beta-dim);  border-color:var(--beta-brd); }
+.td {
+  width:5px; height:5px; border-radius:50%; background:var(--text3);
+  animation:tdot 1.1s ease infinite;
+}
+.td:nth-child(2){animation-delay:.18s} .td:nth-child(3){animation-delay:.36s}
+@keyframes tdot { 0%,80%,100%{transform:translateY(0);opacity:.35;} 40%{transform:translateY(-5px);opacity:1;} }
+
+/* ── BOTTOM BAR ────────────────────────────── */
+.bot {
+  background:var(--bg1); border-top:1px solid var(--border);
+  display:grid; grid-template-rows:auto 1fr;
+  overflow:hidden;
+}
+
+/* mode row */
+.mode-row {
+  display:flex; align-items:center; gap:6px;
+  padding:9px 20px 7px; border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+
+.mlbl {
+  font-family:'DM Mono',monospace; font-size:9px;
+  letter-spacing:2px; text-transform:uppercase; color:var(--text3); margin-right:4px;
+}
+
+.mchip {
+  font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.8px; text-transform:uppercase;
+  padding:4px 14px; border-radius:3px; border:1px solid var(--border2); background:transparent;
+  color:var(--text2); cursor:pointer; transition:all .15s;
+}
+.mchip:hover { background:var(--bg3); color:var(--text); }
+.mchip.on { background:var(--alpha-dim); border-color:var(--alpha-brd); color:var(--alpha); }
+
+.prog-wrap {
+  flex:1; margin-left:18px; display:flex; flex-direction:column; justify-content:center; gap:4px;
+}
+.prog-info { font-family:'DM Mono',monospace; font-size:9px; color:var(--text3); letter-spacing:.5px; }
+.prog-track { height:2px; background:var(--bg3); border-radius:1px; overflow:hidden; }
+.prog-fill {
+  height:100%; width:0%; border-radius:1px;
+  background:linear-gradient(90deg,var(--alpha),var(--beta));
+  transition:width .35s ease;
+}
+
+/* input row */
+.irow {
+  display:flex; align-items:stretch; padding:10px 20px 12px; gap:0;
+  min-height:0;
+}
+
+textarea.pinput {
+  flex:1; min-height:0; height:100%;
+  padding:11px 15px; resize:none; outline:none;
+  background:var(--bg2); border:1px solid var(--border2); border-right:none;
+  border-radius:7px 0 0 7px;
+  color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.6;
+  transition:border-color .15s;
+}
+textarea.pinput::placeholder { color:var(--text3); }
+textarea.pinput:focus { border-color:var(--alpha-brd); }
+
+.ibtns { display:flex; flex-direction:column; flex-shrink:0; min-width:100px; }
+
+.sbtn {
+  flex:1; border:none; border-radius:0 7px 0 0;
+  background:var(--alpha); color:#fff;
+  font-family:'DM Mono',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase;
+  cursor:pointer; transition:background .15s; padding:0 20px;
+}
+.sbtn:hover:not(:disabled) { background:#6aa4f8; }
+.sbtn:disabled { opacity:.3; cursor:not-allowed; }
+
+.xbtn {
+  flex:1; border:1px solid var(--border2); border-top:none; border-radius:0 0 7px 0;
+  background:transparent; color:var(--text2);
+  font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase;
+  cursor:pointer; transition:all .15s; display:none;
+}
+.xbtn.show { display:block; }
+.xbtn:hover { color:#f06060; border-color:rgba(240,96,96,.35); background:rgba(240,96,96,.06); }
+
+/* ── MODALS ─────────────────────────────────── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(6px);
+  display:none; align-items:center; justify-content:center; z-index:200;
+}
+.overlay.open { display:flex; }
+
+/* Conclusion card */
+.card {
+  width:700px; max-width:96vw; max-height:84vh;
+  background:var(--bg1); border:1px solid var(--green-brd);
+  border-radius:12px; display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.7),0 0 80px rgba(61,186,114,.04);
+  animation:cardIn .22s ease;
+}
+@keyframes cardIn { from{opacity:0;transform:scale(.97) translateY(10px);} to{opacity:1;transform:scale(1) translateY(0);} }
+
+.card-hdr {
+  padding:16px 20px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.card-title {
+  font-family:'DM Mono',monospace; font-size:11px; letter-spacing:2px;
+  text-transform:uppercase; color:var(--green); display:flex; align-items:center; gap:8px;
+}
+.cdot { width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green); }
+
+.card-body {
+  flex:1; overflow-y:auto; padding:20px 22px;
+  font-size:13.5px; line-height:1.8; color:var(--text); white-space:pre-wrap;
+}
+.card-body::-webkit-scrollbar { width:2px; }
+.card-body::-webkit-scrollbar-thumb { background:var(--green-brd); }
+
+/* API key card */
+.key-card {
+  width:460px; max-width:95vw;
+  background:var(--bg1); border:1px solid var(--border2);
+  border-radius:12px; padding:28px 28px 24px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+  animation:cardIn .22s ease;
+}
+.key-title { font-family:'DM Mono',monospace; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:var(--text); margin-bottom:6px; }
+.key-sub { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--text3); margin-bottom:20px; }
+.key-input {
+  width:100%; padding:10px 14px; border:1px solid var(--border2); border-radius:6px;
+  background:var(--bg2); color:var(--text); font-family:'DM Mono',monospace; font-size:13px;
+  outline:none; margin-bottom:8px; transition:border-color .15s;
+}
+.key-input:focus { border-color:var(--alpha-brd); }
+.key-note { font-family:'DM Mono',monospace; font-size:9px; color:var(--text3); margin-bottom:18px; line-height:1.6; }
+.key-btns { display:flex; gap:8px; justify-content:flex-end; }
+.key-cancel {
+  padding:8px 18px; border-radius:5px; border:1px solid var(--border2);
+  background:transparent; color:var(--text2); font-family:'DM Mono',monospace;
+  font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all .15s;
+}
+.key-cancel:hover { background:var(--bg3); }
+.key-ok {
+  padding:8px 20px; border-radius:5px; border:none;
+  background:var(--alpha); color:#fff; font-family:'DM Mono',monospace;
+  font-size:10px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all .15s;
+}
+.key-ok:hover { background:#6aa4f8; }
+
+/* History panel */
+.hist-drawer {
+  position:fixed; top:48px; left:-290px; width:290px;
+  height:calc(100vh - 48px); background:var(--bg1);
+  border-right:1px solid var(--border); z-index:150;
+  display:flex; flex-direction:column; overflow:hidden;
+  transition:left .22s ease;
+}
+.hist-drawer.open { left:0; }
+.hist-scrim {
+  position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:149; display:none;
+}
+.hist-scrim.open { display:block; }
+
+.hist-top {
+  padding:14px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.hist-ttl { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text2); }
+
+.hist-list { flex:1; overflow-y:auto; padding:8px; }
+.hist-list::-webkit-scrollbar { width:2px; }
+.hist-list::-webkit-scrollbar-thumb { background:var(--border2); }
+
+.hi {
+  padding:10px 12px; border-radius:6px; border:1px solid transparent;
+  cursor:pointer; transition:all .12s; margin-bottom:2px;
+}
+.hi:hover { background:var(--bg2); border-color:var(--border); }
+.hi.cur { background:var(--alpha-dim); border-color:var(--alpha-brd); }
+.hi-p { font-size:12px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.hi-m { font-family:'DM Mono',monospace; font-size:9px; color:var(--text3); }
+
+/* close x button */
+.xbtn2 {
+  width:28px; height:28px; border-radius:4px; border:1px solid var(--border);
+  background:transparent; color:var(--text2); font-size:16px; line-height:1;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+.xbtn2:hover { background:var(--bg3); color:var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-logo">
+      <div class="logo-led" id="led"></div>
+      <div style="display:flex;flex-direction:column;gap:1px;">
+        <span>Dialectic Ai</span>
+        <span style="font-size:8px;letter-spacing:2px;opacity:0.4;line-height:1;">Tuijbialnajah</span>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="pill" id="statPill">Idle</div>
+      <button class="hbtn" onclick="openHist()">History</button>
+      <button class="hbtn green" id="synthBtn" onclick="openSynth()">View Synthesis</button>
+      <button class="hbtn" onclick="openKeyModal()" title="API Key">⚙ Key</button>
+    </div>
+  </div>
+
+  <!-- CHAT COLUMNS -->
+  <div class="chat-area">
+
+    <div class="chat-col col-a" id="colA">
+      <div class="col-hdr">
+        <div class="agent-tag">
+          <div class="ag-icon">α</div>
+          <div>
+            <div class="ag-name">Alpha</div>
+            <div class="ag-role">Questioner · Challenger</div>
+          </div>
+        </div>
+        <div class="turn-ct" id="cntA">0</div>
+      </div>
+      <div class="msgs" id="msgsA">
+        <div class="empty" id="emptyA">
+          <div class="empty-g">◈</div>
+          <div class="empty-t">Probing questions</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-col col-b" id="colB">
+      <div class="col-hdr">
+        <div class="agent-tag">
+          <div class="ag-icon">β</div>
+          <div>
+            <div class="ag-name">Beta</div>
+            <div class="ag-role">Solver · Synthesizer</div>
+          </div>
+        </div>
+        <div class="turn-ct" id="cntB">0</div>
+      </div>
+      <div class="msgs" id="msgsB">
+        <div class="empty" id="emptyB">
+          <div class="empty-g">◇</div>
+          <div class="empty-t">Building solutions</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bot">
+
+    <div class="mode-row">
+      <span class="mlbl">Depth</span>
+      <button class="mchip on" data-m="surface" onclick="setMode(this)">Surface</button>
+      <button class="mchip"    data-m="mid"     onclick="setMode(this)">Mid</button>
+      <button class="mchip"    data-m="deep"    onclick="setMode(this)">Deep</button>
+
+      <div class="prog-wrap">
+        <div class="prog-info" id="progInfo"></div>
+        <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      </div>
+    </div>
+
+    <div class="irow">
+      <textarea class="pinput" id="pinput"
+        placeholder="Describe your problem… (Ctrl+Enter to solve)"
+        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();go()}"></textarea>
+      <div class="ibtns">
+        <button class="sbtn" id="sbtn" onclick="go()">Solve →</button>
+        <button class="xbtn" id="xbtn" onclick="halt()">■ Stop</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SYNTHESIS OVERLAY -->
+<div class="overlay" id="synthOverlay" onclick="if(event.target===this)closeSynth()">
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><div class="cdot"></div>Final Synthesis & Conclusion</div>
+      <button class="xbtn2" onclick="closeSynth()">×</button>
+    </div>
+    <div class="card-body" id="synthBody"></div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="overlay" id="keyOverlay">
+  <div class="key-card">
+    <div class="key-title">Anthropic API Key</div>
+    <div class="key-sub">One-time setup · Saved locally</div>
+    <input class="key-input" type="password" id="keyInput" placeholder="sk-ant-api03-..."
+      onkeydown="if(event.key==='Enter')saveKey()">
+    <div class="key-note">Stored only in your browser's localStorage.<br>Never sent anywhere except api.anthropic.com</div>
+    <div class="key-btns">
+      <button class="key-cancel" onclick="cancelKey()">Cancel</button>
+      <button class="key-ok" onclick="saveKey()">Save & Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY DRAWER -->
+<div class="hist-scrim" id="histScrim" onclick="closeHist()"></div>
+<div class="hist-drawer" id="histDrawer">
+  <div class="hist-top">
+    <div class="hist-ttl">Past Sessions</div>
+    <button class="xbtn2" onclick="closeHist()">×</button>
+  </div>
+  <div class="hist-list" id="histList"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+//  STATE
+// ═══════════════════════════════════
+const MODES = {
+  surface: { turns:35,  label:'~35 turns' },
+  mid:     { turns:70,  label:'~70 turns' },
+  deep:    { turns:125, label:'~125 turns' },
+};
+
+let mode    = 'surface';
+let busy    = false;
+let stop    = false;
+let aTurns  = 0;
+let bTurns  = 0;
+let ttl     = 0;
+let sess    = JSON.parse(localStorage.getItem('dlc2') || '[]');
+let cur     = null;
+let synText = '';
+
+// ═══════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════
+renderHist();
+if (!localStorage.getItem('dlc_key')) {
+  // Show key modal on first visit after a tiny delay
+  setTimeout(() => showKeyModal(), 400);
+}
+
+// ═══════════════════════════════════
+//  MODE
+// ═══════════════════════════════════
+function setMode(btn) {
+  document.querySelectorAll('.mchip').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  mode = btn.dataset.m;
+}
+
+// ═══════════════════════════════════
+//  MAIN: GO
+// ═══════════════════════════════════
+async function go() {
+  if (busy) return;
+  const problem = document.getElementById('pinput').value.trim();
+  if (!problem) { document.getElementById('pinput').focus(); return; }
+
+  const key = localStorage.getItem('dlc_key');
+  if (!key) { showKeyModal(); return; }
+
+  busy = true; stop = false;
+  aTurns = 0; bTurns = 0; ttl = 0; synText = '';
+
+  wipe();
+  setLed('running');
+  setStat('Running');
+  document.getElementById('sbtn').disabled = true;
+  document.getElementById('xbtn').classList.add('show');
+  document.getElementById('synthBtn').style.display = 'none';
+
+  cur = { id: Date.now()+'', problem, mode, date: fmtDate(), alpha:[], beta:[], syn:'' };
+  sess.unshift(cur);
+  saveSess();
+  renderHist();
+
+  const target = MODES[mode].turns;
+
+  const SYS_A = `You are Alpha — a sharp analytical AI agent.
+Problem: "${problem}"
+Role: Ask ONE focused, probing question per turn. Challenge Beta's answers, expose gaps, push for specifics.
+- Exactly ONE question per turn, 1–3 sentences max.
+- No preamble, no greetings. Jump straight to the question.
+- Vary your angle: clarification → devil's advocate → feasibility → scope → edge cases.`;
+
+  const SYS_B = `You are Beta — a practical solution-building AI agent.
+Problem: "${problem}"
+Role: Answer Alpha's questions directly with concrete, actionable insights. Build the solution step by step.
+- Answer directly, 2–5 sentences. No filler phrases.
+- Give specific steps, not vague advice.
+- Build on your previous turns, don't repeat yourself.`;
+
+  const SYS_S = `You are a synthesis AI. Two agents debated this problem: "${problem}"
+Write a FINAL SYNTHESIS in these sections:
+1. Core Problem — what the real issue is (2 sentences)
+2. Key Insights — 4–6 bullet points of discoveries from the debate
+3. Action Plan — numbered concrete steps to take
+4. Caveats — important warnings or conditions
+5. ✅ CONCLUSION — A clear, decisive conclusion summarizing what was determined
+6. 🏆 BEST WAY FORWARD — The single best recommended approach/solution, explained in 3–5 sentences. Be direct and confident about what the person should do.
+
+Be specific and actionable. No filler. This is what the person will act on.`;
+
+  try {
+    const aH = [], bH = [];
+    let lastB = `Ready to tackle: ${problem}`;
+
+    for (let i = 0; i < target && !stop; i++) {
+
+      // ── ALPHA ──
+      aH.push({ role:'user', content:`Beta said: "${lastB}"\n\nYour question now (round ${i+1}/${target}):` });
+      dot('a', true);
+      const aMsg = await ai(key, SYS_A, aH);
+      dot('a', false);
+      if (!aMsg || stop) break;
+      aH.push({ role:'assistant', content: aMsg });
+      addMsg('A', ++aTurns, aMsg);
+      cur.alpha.push(aMsg);
+      ttl++; prog(ttl, target*2); saveSess();
+      await sleep(200);
+      if (stop) break;
+
+      // ── BETA ──
+      bH.push({ role:'user', content:`Alpha asks: "${aMsg}"\n\nYour answer (round ${i+1}/${target}):` });
+      dot('b', true);
+      const bMsg = await ai(key, SYS_B, bH);
+      dot('b', false);
+      if (!bMsg || stop) break;
+      bH.push({ role:'assistant', content: bMsg });
+      addMsg('B', ++bTurns, bMsg);
+      cur.beta.push(bMsg);
+      lastB = bMsg;
+      ttl++; prog(ttl, target*2); saveSess();
+      await sleep(200);
+    }
+
+    // ── SYNTHESIS ──
+    if (aTurns >= 3) {
+      const digest = cur.alpha.slice(-10).map((a,i) =>
+        `Alpha: ${a}\nBeta: ${cur.beta[i]||'—'}`).join('\n\n');
+      dot('b', true);
+      const syn = await ai(key, SYS_S, [{
+        role:'user',
+        content:`Dialogue:\n\n${digest}\n\nWrite the synthesis now.`
+      }]);
+      dot('b', false);
+      if (syn) {
+        synText = syn;
+        cur.syn = syn;
+        saveSess();
+        document.getElementById('synthBtn').style.display = 'inline-flex';
+        showSynth(syn);
+      }
+    }
+    setLed('done');
+    setStat('Complete');
+
+  } catch(e) {
+    dot('a', false); dot('b', false);
+    errMsg(e.message || 'API failed — check key / credits');
+    setLed('');
+    setStat('Error');
+  }
+
+  busy = false; stop = false;
+  document.getElementById('sbtn').disabled = false;
+  document.getElementById('xbtn').classList.remove('show');
+  renderHist();
+}
+
+function halt() { stop = true; }
+
+// ═══════════════════════════════════
+//  CLAUDE API
+// ═══════════════════════════════════
+async function ai(key, sys, msgs) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:500,
+      system: sys,
+      messages: msgs.slice(-14),
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e.error?.message || `HTTP ${r.status}`);
+  }
+  const d = await r.json();
+  return d.content?.[0]?.text || '';
+}
+
+// ═══════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════
+function wipe() {
+  document.getElementById('msgsA').innerHTML = '';
+  document.getElementById('msgsB').innerHTML = '';
+  document.getElementById('cntA').textContent = '0';
+  document.getElementById('cntB').textContent = '0';
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('progInfo').textContent = '';
+}
+
+function addMsg(who, turn, text) {
+  const el = document.getElementById(who==='A' ? 'msgsA' : 'msgsB');
+  const d = document.createElement('div');
+  d.className = 'msg';
+  d.innerHTML = `<div class="msg-n">Turn ${turn}</div><div class="msg-b">${esc(text)}</div>`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+  document.getElementById(who==='A' ? 'cntA' : 'cntB').textContent = turn;
+}
+
+function errMsg(msg) {
+  const el = document.getElementById('msgsA');
+  const d = document.createElement('div');
+  d.className = 'msg';
+  d.innerHTML = `<div class="msg-b" style="background:var(--red-dim);border-color:var(--red-brd);color:#f08080;">⚠ ${esc(msg)}</div>`;
+  el.appendChild(d);
+}
+
+function dot(who, show) {
+  const id = `dot-${who}`;
+  const el = document.getElementById(who==='a' ? 'msgsA' : 'msgsB');
+  if (show) {
+    if (document.getElementById(id)) return;
+    const t = document.createElement('div');
+    t.id = id; t.className = 'typing-wrap';
+    t.innerHTML = '<div class="td"></div><div class="td"></div><div class="td"></div>';
+    el.appendChild(t);
+    el.scrollTop = el.scrollHeight;
+  } else {
+    document.getElementById(id)?.remove();
+  }
+}
+
+function prog(cur, total) {
+  const pct = Math.min(100,(cur/total)*100);
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progInfo').textContent = `${cur} / ${total} turns`;
+}
+
+function setLed(s) {
+  const l = document.getElementById('led');
+  l.className = 'logo-led ' + s;
+}
+
+function setStat(s) {
+  const p = document.getElementById('statPill');
+  p.textContent = s;
+  p.className = 'pill' + (s==='Complete'?' done':'');
+}
+
+// ═══════════════════════════════════
+//  SYNTHESIS
+// ═══════════════════════════════════
+function showSynth(text) {
+  document.getElementById('synthBody').textContent = text;
+  document.getElementById('synthOverlay').classList.add('open');
+}
+function openSynth() { if (synText) showSynth(synText); }
+function closeSynth() { document.getElementById('synthOverlay').classList.remove('open'); }
+
+// ═══════════════════════════════════
+//  API KEY MODAL
+// ═══════════════════════════════════
+function showKeyModal() {
+  const existing = localStorage.getItem('dlc_key') || '';
+  document.getElementById('keyInput').value = existing;
+  document.getElementById('keyOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('keyInput').focus(), 100);
+}
+function openKeyModal() { showKeyModal(); }
+function cancelKey() { document.getElementById('keyOverlay').classList.remove('open'); }
+function saveKey() {
+  const v = document.getElementById('keyInput').value.trim();
+  if (!v) return;
+  localStorage.setItem('dlc_key', v);
+  document.getElementById('keyOverlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════
+function openHist() {
+  document.getElementById('histDrawer').classList.add('open');
+  document.getElementById('histScrim').classList.add('open');
+}
+function closeHist() {
+  document.getElementById('histDrawer').classList.remove('open');
+  document.getElementById('histScrim').classList.remove('open');
+}
+
+function renderHist() {
+  const el = document.getElementById('histList');
+  if (!sess.length) {
+    el.innerHTML = `<div style="padding:24px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-align:center;">No sessions yet</div>`;
+    return;
+  }
+  el.innerHTML = sess.map(s => `
+    <div class="hi${cur?.id===s.id?' cur':''}" onclick="loadSess('${s.id}')">
+      <div class="hi-p">${esc(s.problem.slice(0,44))}${s.problem.length>44?'…':''}</div>
+      <div class="hi-m">${s.mode.toUpperCase()} · ${s.date} · ${s.alpha.length+s.beta.length} turns</div>
+    </div>`).join('');
+}
+
+function loadSess(id) {
+  if (busy) return;
+  const s = sess.find(x=>x.id===id);
+  if (!s) return;
+  cur = s;
+  closeHist();
+
+  mode = s.mode;
+  document.querySelectorAll('.mchip').forEach(b => b.classList.toggle('on', b.dataset.m===s.mode));
+  document.getElementById('pinput').value = s.problem;
+
+  wipe();
+  aTurns=0; bTurns=0; ttl=0;
+  const len = Math.max(s.alpha.length, s.beta.length);
+  for (let i=0;i<len;i++){
+    if(s.alpha[i]){addMsg('A',++aTurns,s.alpha[i]);ttl++;}
+    if(s.beta[i]) {addMsg('B',++bTurns,s.beta[i]); ttl++;}
+  }
+  prog(ttl, MODES[s.mode].turns*2);
+
+  synText = s.syn || '';
+  if (s.syn) {
+    document.getElementById('synthBtn').style.display = 'inline-flex';
+    setLed('done'); setStat('Complete');
+  } else {
+    setLed(''); setStat('Idle');
+    document.getElementById('synthBtn').style.display = 'none';
+  }
+  renderHist();
+}
+
+function saveSess() {
+  localStorage.setItem('dlc2', JSON.stringify(sess.slice(0,40)));
+}
+
+// ═══════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function fmtDate() {
+  return new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+}
+</script>
+</body>
+</html>
